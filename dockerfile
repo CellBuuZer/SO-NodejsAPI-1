@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 3000
 
 # Define the command to run your app (in your case it might be 'npm start' or 'node index.js')
-CMD ["npm", "start"]
+CMD ["node", "app.js"]

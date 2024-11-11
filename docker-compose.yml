@@ -1,17 +1,16 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  app:
-    build:
-      context: .
+  gastrogo-api:
+    build: .
     container_name: gastrogo-api
     ports:
       - "3000:3000"
     environment:
-      - MONGO_URI=mongodb://18.117.121.144:27017/gastrogo
+      - MONGO_URI=mongodb://18.117.121.144:27017/GastroGoDB  # Use the MongoDB VM's IP
     networks:
-      - gastrogo_network
+      - gastrogo-net
 
 networks:
-  gastrogo_network:
+  gastrogo-net:
     driver: bridge

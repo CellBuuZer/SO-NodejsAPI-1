@@ -1,9 +1,13 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const cors = require('cors'); // Importing CORS
 
 const app = express();
 app.use(bodyParser.json());
+
+// Enable CORS for all origins (you can adjust it to specific origins later)
+app.use(cors());
 
 // MongoDB connection
 mongoose.connect('mongodb://18.117.121.144:27017/GastroGoDB', {
@@ -12,7 +16,7 @@ mongoose.connect('mongodb://18.117.121.144:27017/GastroGoDB', {
   serverSelectionTimeoutMS: 30000
 }).then(() => console.log("MongoDB connected")).catch(err => console.log(err));
 
-// Schema & Model
+// Schema & Model for Users
 const UserSchema = new mongoose.Schema({
   name: String,
   email: String,
@@ -20,9 +24,9 @@ const UserSchema = new mongoose.Schema({
   role: String,
   createdAt: { type: Date, default: Date.now }
 });
-
 const User = mongoose.model('User', UserSchema);
 
+// Schema & Model for Restaurants
 const RestaurantSchema = new mongoose.Schema({
   name: String,
   address: String,
@@ -32,10 +36,9 @@ const RestaurantSchema = new mongoose.Schema({
   rating: { type: Number, min: 0, max: 5 },
   createdAt: { type: Date, default: Date.now }
 });
-
 const Restaurant = mongoose.model('Restaurant', RestaurantSchema);
 
-// CRUD Endpoints
+// CRUD Endpoints for Restaurants
 
 // Create a restaurant
 app.post('/restaurants', async (req, res) => {
@@ -78,6 +81,9 @@ app.delete('/restaurants/:id', async (req, res) => {
   }
 });
 
+// CRUD Endpoints for Users
+
+// Create a user
 app.post('/users', async (req, res) => {
   try {
     const user = new User(req.body);
@@ -88,11 +94,13 @@ app.post('/users', async (req, res) => {
   }
 });
 
+// Get all users
 app.get('/users', async (req, res) => {
   const users = await User.find();
   res.send(users);
 });
 
+// Update a user
 app.put('/users/:id', async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -102,6 +110,7 @@ app.put('/users/:id', async (req, res) => {
   }
 });
 
+// Delete a user
 app.delete('/users/:id', async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);

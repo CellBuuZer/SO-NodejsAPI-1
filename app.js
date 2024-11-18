@@ -23,7 +23,61 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', UserSchema);
 
+const RestaurantSchema = new mongoose.Schema({
+  name: String,
+  address: String,
+  phone: String,
+  email: String,
+  cuisine: String,
+  rating: { type: Number, min: 0, max: 5 },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Restaurant = mongoose.model('Restaurant', RestaurantSchema);
+
 // CRUD Endpoints
+
+// Create a restaurant
+app.post('/restaurants', async (req, res) => {
+  try {
+    const restaurant = new Restaurant(req.body);
+    await restaurant.save();
+    res.status(201).send(restaurant);
+  } catch (err) {
+    res.status(400).send(err);
+  }
+});
+
+// Get all restaurants
+app.get('/restaurants', async (req, res) => {
+  try {
+    const restaurants = await Restaurant.find();
+    res.send(restaurants);
+  } catch (err) {
+    res.status(400).send(err);
+  }
+});
+
+// Update a restaurant
+app.put('/restaurants/:id', async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.send(restaurant);
+  } catch (err) {
+    res.status(400).send(err);
+  }
+});
+
+// Delete a restaurant
+app.delete('/restaurants/:id', async (req, res) => {
+  try {
+    await Restaurant.findByIdAndDelete(req.params.id);
+    res.send({ message: 'Restaurant deleted' });
+  } catch (err) {
+    res.status(400).send(err);
+  }
+});
+
 app.post('/users', async (req, res) => {
   try {
     const user = new User(req.body);

@@ -126,6 +126,39 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Get all restaurants
+app.get('/restaurants', async (req, res) => {
+  try {
+    const restaurants = await Restaurant.find();
+    res.json(restaurants);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching restaurants', error: err.message });
+  }
+});
+
+// Add a new restaurant
+app.post('/restaurants', async (req, res) => {
+  try {
+    const { name, address, phone, email, cuisine, rating } = req.body;
+
+    // Basic validation
+    if (!name || !address || !phone || !email || !cuisine || !rating) {
+      return res.status(400).json({ message: 'All fields are required.' });
+    }
+
+    // Create and save restaurant
+    const restaurant = new Restaurant({ name, address, phone, email, cuisine, rating });
+    await restaurant.save();
+
+    res.status(201).json({ message: 'Restaurant added successfully!', restaurant });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error adding restaurant', error: err.message });
+  }
+});
+
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

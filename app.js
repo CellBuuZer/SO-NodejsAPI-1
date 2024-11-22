@@ -2,6 +2,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors'); // Importing CORS
+const bcrypt = require('bcrypt'); // Import bcrypt for password hashing
+const jwt = require('jsonwebtoken'); // Import JSON Web Token for authentication
 
 const app = express();
 app.use(bodyParser.json());
@@ -16,11 +18,14 @@ mongoose.connect('mongodb://18.117.121.144:27017/GastroGoDB', {
   serverSelectionTimeoutMS: 30000
 }).then(() => console.log("MongoDB connected")).catch(err => console.log(err));
 
+// JWT Secret
+const JWT_SECRET = 'fcd791f14f261669681a54437e5364b6b3e6612dd26ce0cc5b4dea8eda01411f09cede3f905ae58a6a763c0f3b344909a791fb9c06755f654e1007929931fcd3'; // Replace with a strong secret key
+
 // Schema & Model for Users
 const UserSchema = new mongoose.Schema({
   name: String,
-  email: String,
-  password: String,
+  email: { type: String, unique: true, required: true },
+  password: { type: String, required: true },
   role: String,
   createdAt: { type: Date, default: Date.now }
 });
@@ -38,7 +43,63 @@ const RestaurantSchema = new mongoose.Schema({
 });
 const Restaurant = mongoose.model('Restaurant', RestaurantSchema);
 
+// =====================
+// Authentication Endpoints
+// =====================
+
+// Signup (Register a new user)
+app.post('/users/register', async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+
+    // Check if the user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).send({ error: 'Email already registered' });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create a new user
+    const user = new User({ name, email, password: hashedPassword, role });
+    await user.save();
+
+    res.status(201).send({ message: 'User registered successfully', user });
+  } catch (err) {
+    res.status(400).send(err);
+  }
+});
+
+// Login (Authenticate a user)
+app.post('/users/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find the user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).send({ error: 'Invalid email or password' });
+    }
+
+    // Check if the password matches
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).send({ error: 'Invalid email or password' });
+    }
+
+    // Generate a JWT token
+    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '1h' });
+
+    res.status(200).send({ message: 'Login successful', token });
+  } catch (err) {
+    res.status(400).send(err);
+  }
+});
+
+// =====================
 // CRUD Endpoints for Restaurants
+// =====================
 
 // Create a restaurant
 app.post('/restaurants', async (req, res) => {
@@ -81,45 +142,29 @@ app.delete('/restaurants/:id', async (req, res) => {
   }
 });
 
-// CRUD Endpoints for Users
+// =====================
+// Middleware for Authentication
+// =====================
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
-// Create a user
-app.post('/users', async (req, res) => {
-  try {
-    const user = new User(req.body);
-    await user.save();
-    res.status(201).send(user);
-  } catch (err) {
-    res.status(400).send(err);
-  }
+  if (!token) return res.status(401).send({ error: 'Access denied' });
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).send({ error: 'Invalid token' });
+    req.user = user;
+    next();
+  });
+}
+
+// Example: Protecting an endpoint
+app.get('/protected', authenticateToken, (req, res) => {
+  res.send({ message: 'You have access to this protected route', user: req.user });
 });
 
-// Get all users
-app.get('/users', async (req, res) => {
-  const users = await User.find();
-  res.send(users);
-});
-
-// Update a user
-app.put('/users/:id', async (req, res) => {
-  try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.send(user);
-  } catch (err) {
-    res.status(400).send(err);
-  }
-});
-
-// Delete a user
-app.delete('/users/:id', async (req, res) => {
-  try {
-    await User.findByIdAndDelete(req.params.id);
-    res.send({ message: 'User deleted' });
-  } catch (err) {
-    res.status(400).send(err);
-  }
-});
-
+// =====================
 // Start Server
+// =====================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
